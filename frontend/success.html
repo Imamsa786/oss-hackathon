@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VISARegistration Successful - OSS Hackathon</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <header>
+        <div class="card-symbols">♠ ♥ ♦ ♣</div>
+        <h1 class="logo">SUCCESS!</h1>
+        <p class="subtitle">Welcome to the Game</p>
+    </header>
+
+    <div class="container">
+        <div class="card" style="max-width: 700px; margin: 40px auto; text-align: center;">
+            <div class="success-icon">✓</div>
+
+            <h2 style="font-size: 2.5rem; color: #00ff00; margin: 20px 0;">
+                Visa Registration Complete!
+            </h2>
+
+            <p style="font-size: 1.3rem; margin-bottom: 30px; line-height: 1.8;">
+                Congratulations! Your team has been successfully registered for the OSS Hackathon.
+            </p>
+
+            <!-- Registration Details -->
+            <div
+                style="background: var(--light-gray); padding: 30px; border-radius: 10px; margin: 30px 0; text-align: left;">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px; text-align: center;">
+                    Registration Summary
+                </h3>
+
+                <div style="display: grid; gap: 15px;">
+                    <div
+                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                        <span>Team Name:</span>
+                        <strong id="summaryTeamName">-</strong>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                        <span>Team Size:</span>
+                        <strong id="summaryTeamSize">-</strong>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                        <span>Amount Paid:</span>
+                        <strong style="color: #00ff00;" id="summaryAmount">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0;">
+                        <span>Transaction ID:</span>
+                        <strong style="color: var(--bright-red);" id="summaryTxnId">-</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Steps -->
+            <div style="text-align: left; margin: 30px 0;">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px;">Next Steps:</h3>
+                <ul style="font-size: 1.1rem; line-height: 2; padding-left: 20px;">
+                    <li>Save your transaction ID for future reference</li>
+                    <li>Join our WhatsApp group (link)</li>
+                    <li>Bring your college ID on the event day</li>
+                    <li>Report at the venue 30 minutes before start time</li>
+                </ul>
+            </div>
+
+            <!-- Cards Animation -->
+            <div style="font-size: 3rem; color: var(--bright-red); margin: 30px 0; animation: pulse 2s infinite;">
+                ♠ ♥ ♦ ♣
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 40px;">
+                <a href="index.html" class="btn">BACK TO HOME</a>
+                <button onclick="window.print()" class="btn btn-secondary">PRINT SUMMARY</button>
+            </div>
+        </div>
+
+        <!-- Contact Card -->
+        <div class="card" style="max-width: 700px; margin: 20px auto; text-align: center;">
+            <h3 style="color: var(--bright-red); margin-bottom: 15px;">Need Help?</h3>
+            <p style="font-size: 1.1rem;">
+                For any queries, contact us at:
+                <a href="mailto:oss@klu.ac.in" style="color: var(--bright-red);">oss@klu.ac.in</a>
+            </p>
+            <p style="margin-top: 10px;">Phone: +91 98765 43210</p>
+        </div>
+    </div>
+
+    <footer style="text-align: center; padding: 40px 20px; margin-top: 40px;">
+        <p style="font-size: 1.2rem; color: var(--bright-red); margin-bottom: 10px;">
+            See you at the Game!!
+            </p>
+        <p>&copy; 2025 OSS - Open Source Society</p>
+    </footer>
+
+    <script>
+        // Load and display registration summary
+        window.addEventListener('load', () => {
+            const teamName = localStorage.getItem('teamName');
+            const teamSize = localStorage.getItem('teamSize');
+            const amount = localStorage.getItem('amount');
+            const transactionId = localStorage.getItem('transactionId');
+            const paymentStatus = localStorage.getItem('paymentStatus');
+
+            if (!teamName || paymentStatus !== 'success') {
+                alert('No payment confirmation found. Please complete registration first.');
+                window.location.href = 'register.html';
+                return;
+            }
+
+            document.getElementById('summaryTeamName').textContent = teamName;
+            document.getElementById('summaryTeamSize').textContent = teamSize + ' members';
+            document.getElementById('summaryAmount').textContent = '₹' + amount;
+            document.getElementById('summaryTxnId').textContent = transactionId;
+        });
+
+    </script>
+</body>
+
+</html>

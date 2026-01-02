@@ -1,0 +1,8 @@
+node_modules/
+.env
+backend/data/registrations.json
+backend/data/receipts/
+backend/data/payment_screenshots/
+*.log
+.DS_Store
+npm-debug.log*

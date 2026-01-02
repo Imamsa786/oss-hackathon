@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - OSS Hackathon</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="card" style="max-width: 400px; width: 90%;">
+            <h2 style="text-align: center; color: var(--bright-red); margin-bottom: 30px;">
+                Master Login
+            </h2>
+            <div style="text-align: center; font-size: 3rem; color: var(--dark-red); margin-bottom: 20px;">
+                ♠ ♥ ♦ ♣
+            </div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required placeholder="Enter admin username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required placeholder="Enter admin password">
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn">LOGIN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboardScreen" style="display: none;">
+        <header>
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+                <div>
+                    <div class="card-symbols" style="font-size: 1.5rem;">♠ ♥ ♦ ♣</div>
+                    <h1 class="logo" style="font-size: 2rem;">Master DASHBOARD</h1>
+                    <p class="subtitle" style="font-size: 1rem;">OSS Hackathon Management</p>
+                </div>
+                <button onclick="logout()" class="btn btn-secondary">LOGOUT</button>
+            </div>
+        </header>
+
+        <div class="container">
+            <!-- Statistics Cards -->
+            <div class="stats-grid" style="margin-top: 40px;">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTeams">0</div>
+                    <div class="stat-label">Total Teams</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalParticipants">0</div>
+                    <div class="stat-label">Total players</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRevenue">₹0</div>
+                    <div class="stat-label">Total Revenue</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="pendingTeams">0</div>
+                    <div class="stat-label">Pending Payments</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card" style="margin: 30px 0; text-align: center;">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px;">Quick Actions</h3>
+                <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="refreshData()" class="btn">🔄 REFRESH DATA</button>
+                    <button onclick="exportCSV()" class="btn">📥 EXPORT TO CSV</button>
+                </div>
+            </div>
+
+            <!-- Registrations Table -->
+            <div class="card">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px;">All Registrations</h3>
+                <div style="overflow-x: auto;">
+                    <table id="registrationsTable">
+                        <thead>
+                            <tr>
+                                <th>Team Name</th>
+                                <th>Team Leader</th>
+                                <th>Email</th>
+                                <th>Members</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrationsBody">
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 40px;">
+                                    <div class="spinner"></div>
+                                    <p style="margin-top: 20px;">Loading registrations...</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Modal -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modalIcon"></div>
+            <h2 id="modalTitle" style="color: var(--bright-red); margin: 20px 0;"></h2>
+            <p id="modalMessage" style="font-size: 1.1rem;"></p>
+            <button class="btn" onclick="closeModal()" style="margin-top: 20px;">OK</button>
+        </div>
+    </div>
+
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

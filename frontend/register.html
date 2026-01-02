@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registration - OSS Hackathon</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Header -->
+    <header>
+        <div class="card-symbols">♠ ♥ ♦ ♣</div>
+        <h1 class="logo">TEAM REGISTRATION</h1>
+        <p class="subtitle">Alice in Borderland</p>
+    </header>
+
+    <div class="container">
+        <div class="card" style="max-width: 800px; margin: 40px auto;">
+            <h2 style="text-align: center; color: var(--bright-red); margin-bottom: 30px;">
+                Register Your Team
+            </h2>
+
+            <form id="registrationForm">
+                <!-- Team Details -->
+                <div class="form-group">
+                    <label for="teamName">Team Name *</label>
+                    <input type="text" id="teamName" required placeholder="Enter your team name">
+                </div>
+
+                <div class="form-group">
+                    <label for="teamLeaderName">Team Leader Name *</label>
+                    <input type="text" id="teamLeaderName" required placeholder="Enter team leader's full name">
+                </div>
+
+                <div class="form-group">
+                    <label for="teamLeaderEmail">Team Leader Email (KLU) *</label>
+                    <input type="email" id="teamLeaderEmail" required placeholder="example@klu.ac.in">
+                    <small style="color: #888;">Must be a valid @klu.ac.in email</small>
+                </div>
+
+                <!-- Team Members Section -->
+                <div style="margin: 40px 0;">
+                    <h3 style="color: var(--bright-red); margin-bottom: 20px;">
+                        Team Members (Max 4 including leader)
+                    </h3>
+                    <div id="membersContainer"></div>
+                    <button type="button" id="addMemberBtn" class="btn" style="margin-top: 20px;">
+                        + Add Team Member
+                    </button>
+                    <p style="color: #888; margin-top: 10px; font-size: 0.9rem;">
+                        You can add 1-4 members. Click "Add Team Member" to include yourself and others.
+                    </p>
+                </div>
+
+                <!-- Submit Button -->
+                <div style="text-align: center; margin-top: 40px;">
+                    <button type="submit" class="btn" id="submitBtn">
+                        PROCEED TO PAYMENT
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal for messages -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div id="modalIcon"></div>
+            <h2 id="modalTitle" style="color: var(--bright-red); margin: 20px 0;"></h2>
+            <p id="modalMessage" style="font-size: 1.1rem;"></p>
+            <button class="btn" onclick="closeModal()" style="margin-top: 20px;">OK</button>
+        </div>
+    </div>
+
+    <script src="js/register.js"></script>
+</body>
+
+</html>

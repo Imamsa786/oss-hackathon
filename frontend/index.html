@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="OSS Hackathon - Alice in Borderland">
+<meta name="keywords" content="OSS Hackathon, Alice in Borderland, KL University">
+<meta name="author" content="Open Source Society">
+
+<head>
+    <title>OSS Hackathon - Alice in Borderland</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bright-red: #ff0033;
+            --dark-red: #8b0000;
+            --black: #0a0a0a;
+            --gray: #1a1a1a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Orbitron', sans-serif;
+            background: linear-gradient(135deg, #000000, #1a0000);
+            color: #ffffff;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Animated String Strips */
+        .string-strips {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .strip {
+            position: absolute;
+            width: 6px;
+            height: 0;
+            background: linear-gradient(180deg, transparent, var(--bright-red), transparent);
+            animation: fallDown 3s ease-in-out infinite;
+            opacity: 0.4;
+        }
+
+        @keyframes fallDown {
+            0% {
+                height: 0;
+                top: -10%;
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.8;
+            }
+
+            50% {
+                height: 100vh;
+                opacity: 0.6;
+            }
+
+            100% {
+                top: 100%;
+                height: 100vh;
+                opacity: 0;
+            }
+        }
+
+        /* Navbar */
+        .navbar {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background: rgba(10, 10, 10, 0.95);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--bright-red);
+            box-shadow: 0 5px 30px rgba(255, 0, 51, 0.5);
+        }
+
+        .navbar-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+        }
+
+        .navbar-logos {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .navbar-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid var(--bright-red);
+            object-fit: cover;
+            animation: logoFloat 3s ease-in-out infinite, logoPulse 2s ease-in-out infinite;
+            transition: transform 0.3s;
+        }
+
+        .navbar-logo:hover {
+            transform: scale(1.2) rotate(360deg);
+            border-color: #fff;
+        }
+
+        .navbar-logo:nth-child(1) {
+            animation-delay: 0s;
+        }
+
+        .navbar-logo:nth-child(2) {
+            animation-delay: 0.3s;
+        }
+
+        .navbar-logo:nth-child(3) {
+            animation-delay: 0.6s;
+        }
+
+        @keyframes logoFloat {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+        }
+
+        @keyframes logoPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 10px var(--bright-red);
+            }
+
+            50% {
+                box-shadow: 0 0 25px var(--bright-red), 0 0 40px var(--bright-red);
+            }
+        }
+
+        .navbar-menu {
+            display: flex;
+            list-style: none;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .navbar-menu li a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .navbar-menu li a:hover {
+            color: var(--bright-red);
+            background: rgba(255, 0, 51, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .navbar-menu li a.register-btn {
+            background: linear-gradient(135deg, var(--bright-red), var(--dark-red));
+            color: #ffffff;
+            box-shadow: 0 5px 20px rgba(255, 0, 51, 0.4);
+        }
+
+        .navbar-menu li a.register-btn:hover {
+            background: linear-gradient(135deg, #ff1a4d, var(--bright-red));
+            box-shadow: 0 8px 30px rgba(255, 0, 51, 0.6);
+        }
+
+        .menu-toggle {
+            display: none;
+            flex-direction: column;
+            cursor: pointer;
+            gap: 5px;
+        }
+
+        .menu-toggle span {
+            width: 30px;
+            height: 3px;
+            background: var(--bright-red);
+            transition: 0.3s;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-menu {
+                position: absolute;
+                top: 80px;
+                right: -100%;
+                flex-direction: column;
+                background: rgba(10, 10, 10, 0.98);
+                width: 250px;
+                padding: 30px;
+                border-left: 2px solid var(--bright-red);
+                border-bottom: 2px solid var(--bright-red);
+                transition: right 0.3s;
+            }
+
+            .navbar-menu.active {
+                right: 0;
+            }
+
+            .menu-toggle {
+                display: flex;
+            }
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .card-symbol {
+            position: absolute;
+            font-size: 4rem;
+            color: rgba(255, 0, 51, 0.15);
+            animation: float 6s ease-in-out infinite;
+            text-shadow: 0 0 20px rgba(255, 0, 51, 0.5);
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-30px) rotate(180deg);
+            }
+        }
+
+        /* Header */
+        header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 60px 20px 40px;
+            background: linear-gradient(135deg, rgba(139, 0, 0, 0.8), rgba(10, 10, 10, 0.9));
+            border-bottom: 3px solid var(--bright-red);
+            box-shadow: 0 5px 30px rgba(255, 0, 51, 0.3);
+        }
+
+        .logo {
+            font-size: 3rem;
+            color: var(--bright-red);
+            text-shadow: 0 0 20px var(--bright-red), 0 0 40px var(--bright-red);
+            margin: 10px 0;
+            letter-spacing: 5px;
+            font-weight: 900;
+        }
+
+        .subtitle {
+            font-size: 1.5rem;
+            color: #ffffff;
+            font-style: italic;
+            margin-top: 10px;
+            font-weight: 400;
+        }
+
+        .card-symbols {
+            font-size: 2rem;
+            color: var(--bright-red);
+            margin: 10px 0;
+        }
+
+        /* Container */
+        .container {
+            position: relative;
+            z-index: 10;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Card */
+        .card {
+            background: rgba(26, 26, 26, 0.85);
+            border: 2px solid var(--dark-red);
+            border-radius: 15px;
+            padding: 40px;
+            margin: 30px 0;
+            box-shadow: 0 10px 40px rgba(255, 0, 51, 0.2);
+            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(255, 0, 51, 0.4);
+        }
+
+        /* Button */
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--bright-red), var(--dark-red));
+            color: #ffffff;
+            text-decoration: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 5px 20px rgba(255, 0, 51, 0.4);
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 30px rgba(255, 0, 51, 0.6);
+            background: linear-gradient(135deg, #ff1a4d, var(--bright-red));
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, var(--bright-red), var(--dark-red));
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 30px;
+            padding-left: 30px;
+        }
+
+        .timeline-item::before {
+            content: '♠';
+            position: absolute;
+            left: -28px;
+            top: 0;
+            width: 40px;
+            height: 40px;
+            background: var(--dark-red);
+            border: 3px solid var(--bright-red);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--bright-red);
+        }
+
+        .timeline-time {
+            display: inline-block;
+            background: var(--bright-red);
+            color: #000;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+
+        /* Footer */
+        footer {
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2rem;
+            }
+
+            .card {
+                padding: 20px;
+            }
+
+            .timeline {
+                padding-left: 30px;
+            }
+
+            .navbar-logos {
+                gap: 10px;
+            }
+
+            .navbar-logo {
+                width: 40px;
+                height: 40px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-container">
+            <div class="navbar-logos">
+                <img src="https://www.bing.com/th/id/OIP.dH9xGc9McUDoY0WGzYGl5gHaHa?w=160&h=211" alt="Logo 1"
+                    class="navbar-logo">
+                <img src="https://d1fdloi71mui9q.cloudfront.net/r5TKb0TBT0ap4qkEvU5T_xqs3cm6YoU46N7IY" alt="Logo 2"
+                    class="navbar-logo">
+                <img src="https://www.bing.com/th/id/OIP.dH9xGc9McUDoY0WGzYGl5gHaHa?w=160&h=211" alt="Logo 3"
+                    class="navbar-logo">
+            </div>
+
+            <div class="menu-toggle" id="menuToggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <ul class="navbar-menu" id="navbarMenu">
+                <li><a href="#home">HOME</a></li>
+                <li><a href="#agenda">AGENDA</a></li>
+                <li><a href="#contact">CONTACT</a></li>
+                <li><a href="#registration" class="register-btn">REGISTRATION</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Animated String Strips -->
+    <div class="string-strips" id="stringStrips"></div>
+
+    <!-- Animated Background -->
+    <div class="bg-animation">
+        <div class="card-symbol" style="top: 10%; left: 10%; animation-delay: 0s;">♠</div>
+        <div class="card-symbol" style="top: 20%; right: 15%; animation-delay: 2s;">♥</div>
+        <div class="card-symbol" style="bottom: 15%; left: 20%; animation-delay: 4s;">♦</div>
+        <div class="card-symbol" style="bottom: 25%; right: 10%; animation-delay: 6s;">♣</div>
+        <div class="card-symbol" style="top: 50%; left: 50%; animation-delay: 3s;">♠</div>
+        <div class="card-symbol" style="top: 70%; right: 30%; animation-delay: 5s;">♥</div>
+    </div>
+
+    <!-- Header -->
+    <header id="home">
+        <div class="card-symbols">♠ ♥ ♦ ♣</div>
+        <h1 class="logo">OSS HACKATHON</h1>
+        <p class="subtitle">Alice in Borderland</p>
+        <div class="card-symbols">♣ ♦ ♥ ♠</div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="card" style="text-align: center; margin-top: 40px;" id="registration">
+            <h2 style="font-size: 2.5rem; color: var(--bright-red); margin-bottom: 20px;">
+                Enter the Game Now
+            </h2>
+            <p style="font-size: 1.3rem; margin-bottom: 30px; line-height: 1.8;">
+                Welcome to the ultimate coding challenge inspired by Alice in Borderland.
+                Form your team, solve challenges, and survive the games.
+                Are you ready to play?
+            </p>
+            <a href="register.html" class="btn">REGISTER NOW</a>
+        </section>
+
+        <!-- About Section -->
+        <section class="card">
+            <h2 style="font-size: 2rem; color: var(--bright-red); margin-bottom: 20px; text-align: center;">
+                About the Game
+            </h2>
+            <p style="font-size: 1.1rem; line-height: 1.8; text-align: center;">
+                OSS (Open Source Society) presents a 24-hour hackathon where creativity meets code.
+                Inspired by the thrilling world of Alice in Borderland, teams will face challenges
+                that test their skills in problem-solving, innovation, and teamwork.
+            </p>
+            <div
+                style="margin-top: 30px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--bright-red);">24</div>
+                    <div style="font-size: 1.2rem;">Hours</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--bright-red);">4</div>
+                    <div style="font-size: 1.2rem;">Max Team Size</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 3rem; color: var(--bright-red);">₹250</div>
+                    <div style="font-size: 1.2rem;">Per Participant</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Timeline/Agenda -->
+        <section class="card" id="agenda">
+            <h2 style="font-size: 2rem; color: var(--bright-red); margin-bottom: 30px; text-align: center;">
+                Event Timeline
+            </h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-time">9:00 AM</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">Registration & Check-in Opening Ceremony
+                    </h3>
+                    <p>Team registration and venue check-in. Collect your team badges.</p><br>
+                    <p>Welcome address and hackathon rules announcement.</p>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">11:00 AM</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">Hackathon Begins</h3>
+                    <p>Problem statements revealed. Let the games begin!</p>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">1:00 PM</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">Lunch Break</h3>
+                    <p>Fuel up for the journey ahead.</p>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">5:00 PM</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">First Checkpoint</h3>
+                    <p>Progress review with mentors.</p>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">:5:00 AM (Next Day)</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">Final Presentations</h3>
+                    <p>Submit your projects. The countdown ends. Teams present their solutions to the judges.</p>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-time">9:00 AM</div>
+                    <h3 style="color: var(--bright-red); margin-bottom: 5px;">Awards & Closing</h3>
+                    <p>Winner announcement and prize distribution.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Rules Section -->
+        <section class="card">
+            <h2 style="font-size: 2rem; color: var(--bright-red); margin-bottom: 20px; text-align: center;">
+                Rules & Guidelines
+            </h2>
+            <ul style="font-size: 1.1rem; line-height: 2; padding-left: 20px;">
+                <li>Teams must have 1-4 members (including team leader)</li>
+                <li>All team members must be from KL University (@klu.ac.in email required)</li>
+                <li>Registration fee: ₹250 per participant</li>
+                <li>Internet access will be provided</li>
+                <li>Judges' decision is final</li>
+            </ul>
+        </section>
+
+        <!-- Prizes Section -->
+        <section class="card" style="text-align: center;">
+            <h2 style="font-size: 2rem; color: var(--bright-red); margin-bottom: 30px;">
+                Prizes & Rewards
+            </h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px;">
+                <div>
+                    <div style="font-size: 3rem; color: #C0C0C0;">🥈</div>
+                    <h3 style="color: var(--bright-red); margin: 10px 0;">2nd Prize</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold;">₹7,000</p>
+                </div>
+                <div>
+                    <div style="font-size: 4rem; color: #FFD700;">🥇</div>
+                    <h3 style="color: var(--bright-red); margin: 10px 0;">1st Prize</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold;">₹10,000</p>
+                </div>
+                <div>
+                    <div style="font-size: 3rem; color: #CD7F32;">🥉</div>
+                    <h3 style="color: var(--bright-red); margin: 10px 0;">3rd Prize</h3>
+                    <p style="font-size: 1.5rem; font-weight: bold;">₹5,000</p>
+                </div>
+            </div>
+            <p style="margin-top: 30px; font-size: 1.1rem;">
+                Plus certificates for all participants and special awards for innovation!</p>
+            <p>Internship will br provide for best solutions.</p>
+        </section>
+
+        <!-- Call to Action -->
+        <section class="card"
+            style="text-align: center; background: linear-gradient(135deg, var(--dark-red), var(--black));">
+            <h2 style="font-size: 2.5rem; margin-bottom: 20px;">Ready to enter the game?</h2>
+            <p style="font-size: 1.3rem; margin-bottom: 30px;">
+                The games are waiting. Form your team and register now!
+            </p>
+            <a href="#registration" class="btn" style="font-size: 1.5rem; padding: 20px 50px;">
+                REGISTER YOUR TEAM
+            </a>
+            <div style="margin-top: 30px; font-size: 1.5rem; color: var(--bright-red);">
+                ♠ ♥ ♦ ♣
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section class="card" style="text-align: center;" id="contact">
+            <h2 style="font-size: 2rem; color: var(--bright-red); margin-bottom: 20px;">
+                Contact Us
+            </h2>
+            <p style="font-size: 1.1rem; margin-bottom: 10px;">
+                Email: <a href="mailto:oss@klu.ac.in" style="color: var(--bright-red);">oss@klu.ac.in</a>
+            </p>
+            <p style="font-size: 1.1rem; margin-bottom: 10px;">
+                Phone: +91 98765 43210
+            </p>
+            <a href="https://www.linkedin.com/in/kare-oss"><i class="fa-brands fa-linkedin"></i>linkedin</a>
+            <a href="https://www.instagram.com/kare_oss/"><i class="fa-brands fa-instagram"></i>instagram</a>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer style="text-align: center; padding: 40px 20px; background: var(--black); margin-top: 40px;">
+        <div style="font-size: 1.5rem; color: var(--dark-red); margin-bottom: 10px;">♠ ♥ ♦ ♣</div>
+        <p>&copy; 2025 OSS - Open Source Society. All rights reserved.</p>
+        <p style="margin-top: 10px; color: var(--dark-red);">Developed with ❤️ for KL University</p>
+    </footer>
+
+    <script>
+        // Create animated string strips
+        function createStrips() {
+            const container = document.getElementById('stringStrips');
+            const numStrips = 30;
+
+            for (let i = 0; i < numStrips; i++) {
+                const strip = document.createElement('div');
+                strip.className = 'strip';
+                strip.style.left = `${Math.random() * 100}%`;
+                strip.style.animationDelay = `${i * 2}s`;
+                strip.style.animationDuration = `${3 + Math.random() * 2}s`;
+                container.appendChild(strip);
+            }
+        }
+
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menuToggle');
+        const navbarMenu = document.getElementById('navbarMenu');
+
+        menuToggle.addEventListener('click', () => {
+            navbarMenu.classList.toggle('active');
+        });
+
+        // Close menu when clicking a link
+        document.querySelectorAll('.navbar-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                navbarMenu.classList.remove('active');
+            });
+        });
+
+        // Initialize strips on page load
+        window.addEventListener('load', createStrips);
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>
