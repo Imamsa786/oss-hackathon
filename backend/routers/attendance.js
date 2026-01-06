@@ -44,6 +44,92 @@ const authenticate = (req, res, next) => {
     }
 };
 
+// Extract registration ID from various QR formats
+function extractRegistrationId(qrData) {
+    if (!qrData) return null;
+    
+    // Remove any whitespace
+    qrData = qrData.trim();
+    
+    console.log('🔍 Raw QR Data (first 200 chars):', qrData.substring(0, 200));
+    
+    // Case 1: Direct registration ID (just numbers/alphanumeric)
+    if (/^[a-zA-Z0-9-_]+$/.test(qrData) && !qrData.includes('http')) {
+        console.log('✅ Identified as direct ID:', qrData);
+        return qrData;
+    }
+    
+    // Case 2: URL format
+    try {
+        const url = new URL(qrData);
+        console.log('🌐 Parsed as URL:', url.href);
+        
+        // Check query parameters - try multiple common parameter names
+        const paramNames = ['id', 'registrationId', 'regId', 'registration_id', 'teamId', 'team_id'];
+        for (const param of paramNames) {
+            const value = url.searchParams.get(param);
+            if (value) {
+                console.log(`✅ Found ID in query param '${param}':`, value);
+                return value;
+            }
+        }
+        
+        // Check path segments
+        const pathSegments = url.pathname.split('/').filter(s => s);
+        console.log('📂 URL Path segments:', pathSegments);
+        
+        if (pathSegments.length > 0) {
+            // Try last segment first (most common)
+            const lastSegment = pathSegments[pathSegments.length - 1];
+            if (/^[a-zA-Z0-9-_]+$/.test(lastSegment) && lastSegment.length > 3) {
+                console.log('✅ Using last path segment as ID:', lastSegment);
+                return lastSegment;
+            }
+            
+            // Try second-to-last segment
+            if (pathSegments.length > 1) {
+                const secondLast = pathSegments[pathSegments.length - 2];
+                if (/^\d+$/.test(secondLast)) {
+                    console.log('✅ Using second-to-last segment as ID:', secondLast);
+                    return secondLast;
+                }
+            }
+        }
+    } catch (e) {
+        console.log('❌ Not a valid URL');
+    }
+    
+    // Case 3: JSON format
+    try {
+        const parsed = JSON.parse(qrData);
+        console.log('📋 Parsed as JSON:', parsed);
+        const id = parsed.id || parsed.registrationId || parsed.regId || parsed.registration_id;
+        if (id) {
+            console.log('✅ Found ID in JSON:', id);
+            return id;
+        }
+    } catch (e) {
+        console.log('❌ Not valid JSON');
+    }
+    
+    // Case 4: Key-value format
+    const kvMatch = qrData.match(/(?:id|registrationId|regId|registration_id)[=:]\s*([a-zA-Z0-9-_]+)/i);
+    if (kvMatch) {
+        console.log('✅ Found ID in key-value format:', kvMatch[1]);
+        return kvMatch[1];
+    }
+    
+    // Case 5: Just extract any long number (as last resort)
+    const numberMatch = qrData.match(/\b(\d{10,})\b/);
+    if (numberMatch) {
+        console.log('⚠️ Using extracted long number as ID:', numberMatch[1]);
+        return numberMatch[1];
+    }
+    
+    console.log('❌ Could not extract ID from QR data');
+    return null;
+}
+
 // Verify QR and get registration details
 router.post('/verify-qr', authenticate, (req, res) => {
     try {
@@ -56,35 +142,92 @@ router.post('/verify-qr', authenticate, (req, res) => {
             });
         }
         
-        // Parse QR data
-        let registrationId;
-        try {
-            const parsedData = JSON.parse(qrData);
-            registrationId = parsedData.id || parsedData.registrationId;
-        } catch (e) {
-            // If not JSON, treat as raw ID
-            registrationId = qrData;
-        }
+        console.log('\n========== QR VERIFICATION STARTED ==========');
         
-        const registrations = readRegistrations();
-        const registration = registrations.find(r => 
-            r.registrationId == registrationId || r.id == registrationId
-        );
+        // Extract registration ID from QR data
+        const registrationId = extractRegistrationId(qrData);
         
-        if (!registration) {
-            return res.status(404).json({
+        if (!registrationId) {
+            console.log('❌ Failed to extract registration ID');
+            return res.status(400).json({
                 success: false,
-                message: 'Registration not found'
+                message: 'Could not extract registration ID from QR code. Please check QR format.'
             });
         }
+        
+        console.log('🔑 Extracted Registration ID:', registrationId, 'Type:', typeof registrationId);
+        
+        const registrations = readRegistrations();
+        console.log('📊 Total registrations in database:', registrations.length);
+        
+        // Debug: Show first few registration IDs and their structure
+        if (registrations.length > 0) {
+            console.log('📝 Sample registration structure:', {
+                keys: Object.keys(registrations[0]),
+                id: registrations[0].id,
+                registrationId: registrations[0].registrationId,
+                idType: typeof registrations[0].id,
+                regIdType: typeof registrations[0].registrationId
+            });
+        }
+        
+        // Try multiple comparison methods
+        const registration = registrations.find(r => {
+            const regId = r.registrationId || r.id;
+            const regIdStr = String(regId);
+            const searchIdStr = String(registrationId);
+            
+            // Log each comparison for debugging
+            const matches = regIdStr === searchIdStr || 
+                           Number(regId) === Number(registrationId) ||
+                           regId == registrationId;
+            
+            if (matches) {
+                console.log('✅ MATCH FOUND:', regIdStr, '===', searchIdStr);
+            }
+            
+            return matches;
+        });
+        
+        if (!registration) {
+            // Enhanced debugging
+            console.log('\n❌ Registration NOT FOUND');
+            console.log('🔍 Searching for:', registrationId, '(Type:', typeof registrationId, ')');
+            console.log('📋 Available IDs (first 10):');
+            registrations.slice(0, 10).forEach((r, idx) => {
+                const rid = r.registrationId || r.id;
+                console.log(`  ${idx + 1}. ${rid} (Type: ${typeof rid})`);
+            });
+            
+            // Check for close matches
+            const closeMatches = registrations.filter(r => {
+                const rid = String(r.registrationId || r.id);
+                const searchId = String(registrationId);
+                return rid.includes(searchId) || searchId.includes(rid);
+            });
+            
+            if (closeMatches.length > 0) {
+                console.log('🔍 Found close matches:', closeMatches.map(r => r.registrationId || r.id));
+            }
+            
+            return res.status(404).json({
+                success: false,
+                message: `Registration not found with ID: ${registrationId}. Please ensure the QR code is valid and payment is completed.`
+            });
+        }
+        
+        console.log('✅ Registration found:', registration.teamName);
         
         // Check if payment completed
         if (registration.status !== 'completed') {
+            console.log('⚠️ Payment not completed. Status:', registration.status);
             return res.status(400).json({
                 success: false,
-                message: 'Payment not completed'
+                message: 'Payment not completed for this registration'
             });
         }
+        
+        console.log('========== QR VERIFICATION SUCCESS ==========\n');
         
         res.json({
             success: true,
@@ -101,11 +244,10 @@ router.post('/verify-qr', authenticate, (req, res) => {
         });
         
     } catch (error) {
-        console.error('Error verifying QR:', error);
+        console.error('💥 Error verifying QR:', error);
         res.status(500).json({
             success: false,
-            message: 'Error verifying QR code',
-            error: error.message
+            message: 'Error verifying QR code: ' + error.message
         });
     }
 });
@@ -123,9 +265,13 @@ router.post('/mark-attendance', authenticate, (req, res) => {
         }
         
         let registrations = readRegistrations();
-        const regIndex = registrations.findIndex(r => 
-            r.registrationId == registrationId || r.id == registrationId
-        );
+        
+        const regIndex = registrations.findIndex(r => {
+            const regId = r.registrationId || r.id;
+            return String(regId) === String(registrationId) || 
+                   Number(regId) === Number(registrationId) ||
+                   regId == registrationId;
+        });
         
         if (regIndex === -1) {
             return res.status(404).json({
