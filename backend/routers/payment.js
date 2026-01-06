@@ -21,28 +21,57 @@ const storage = multer.diskStorage({
 
 const upload = multer({
     storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024 // 5MB limit
-    },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        
-        if (extname && mimetype) {
-            cb(null, true);
-        } else {
-            cb(new Error('Only PNG and JPG images are allowed'));
-        }
-    }
+    limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-// Process payment with screenshot upload
+// Helper functions
+function readRegistrations() {
+    try {
+        const dataFile = path.join(__dirname, '../data/registrations.json');
+        if (fs.existsSync(dataFile)) {
+            const fileContent = fs.readFileSync(dataFile, 'utf8');
+            const data = JSON.parse(fileContent);
+            return Array.isArray(data) ? data : (data.registrations || []);
+        }
+        return [];
+    } catch (error) {
+        console.error('Error reading registrations:', error);
+        return [];
+    }
+}
+
+function writeRegistrations(registrations) {
+    try {
+        const dataFile = path.join(__dirname, '../data/registrations.json');
+        const data = { registrations: Array.isArray(registrations) ? registrations : [] };
+        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Error writing registrations:', error);
+        return false;
+    }
+}
+
+// Generate simple unique ID for QR
+function generateQRId(registrationId, teamName) {
+    return Buffer.from(JSON.stringify({
+        id: registrationId,
+        team: teamName,
+        timestamp: Date.now()
+    })).toString('base64');
+}
+
+// SIMPLE Payment submission with auto-approve
 router.post('/submit', upload.single('proof'), async (req, res) => {
     try {
+        console.log('📥 Payment submission received');
+        console.log('Body:', req.body);
+        console.log('File:', req.file ? 'Yes' : 'No');
+        
         const { registrationId, transactionId } = req.body;
         
         if (!registrationId) {
+            console.log('❌ Missing registration ID');
             return res.status(400).json({
                 success: false,
                 message: 'Registration ID is required'
@@ -50,68 +79,82 @@ router.post('/submit', upload.single('proof'), async (req, res) => {
         }
         
         if (!req.file) {
+            console.log('❌ No file uploaded');
             return res.status(400).json({
                 success: false,
                 message: 'Payment screenshot is required'
             });
         }
         
-        // Read registrations file
-        const dataFile = path.join(__dirname, '../data/registrations.json');
-        let registrations = [];
+        console.log('📄 File uploaded:', req.file.filename);
         
-        if (fs.existsSync(dataFile)) {
-            const fileContent = fs.readFileSync(dataFile, 'utf8');
-            const data = JSON.parse(fileContent);
-            registrations = data.registrations || data || [];
-        }
+        let registrations = readRegistrations();
+        console.log('📊 Total registrations:', registrations.length);
         
-        // Find registration
         const regIndex = registrations.findIndex(r => 
             r.registrationId == registrationId || r.id == registrationId
         );
         
         if (regIndex === -1) {
+            console.log('❌ Registration not found:', registrationId);
             return res.status(404).json({
                 success: false,
                 message: 'Registration not found'
             });
         }
         
-        // Calculate amount
         const registration = registrations[regIndex];
         const amount = registration.teamMembers.length * 250;
         
-        // Update registration with payment info
-        registrations[regIndex].paymentStatus = 'SUBMITTED';
+        console.log('💰 Amount:', amount);
+        
+        // Generate QR ID
+        const qrId = generateQRId(registrationId, registration.teamName);
+        
+        // AUTO-APPROVE: Update registration to COMPLETED
+        registrations[regIndex].paymentStatus = 'COMPLETED';
+        registrations[regIndex].status = 'completed';
         registrations[regIndex].payment = {
             transactionId: transactionId || 'NOT_PROVIDED',
             amount: amount,
             screenshotPath: req.file.filename,
             timestamp: new Date().toISOString(),
-            status: 'pending_verification'
+            status: 'approved',
+            verifiedAt: new Date().toISOString(),
+            autoApproved: true
+        };
+        registrations[regIndex].qrId = qrId;
+        registrations[regIndex].attendance = {
+            marked: false,
+            markedAt: null,
+            markedBy: null
         };
         
-        // Save updated registrations
-        const saveData = Array.isArray(registrations) 
-            ? { registrations } 
-            : registrations;
-        fs.writeFileSync(dataFile, JSON.stringify(saveData, null, 2));
+        const saved = writeRegistrations(registrations);
         
-        // TODO: Send email notification
+        if (!saved) {
+            console.log('❌ Failed to save');
+            return res.status(500).json({
+                success: false,
+                message: 'Failed to save registration'
+            });
+        }
+        
+        console.log('✅ Payment AUTO-APPROVED:', registrationId);
         
         res.json({
             success: true,
-            message: 'Payment proof submitted successfully',
+            message: 'Payment approved successfully',
             data: {
                 transactionId: transactionId || 'NOT_PROVIDED',
                 amount: amount,
-                status: 'pending_verification'
+                status: 'approved',
+                qrId: qrId
             }
         });
         
     } catch (error) {
-        console.error('Payment submission error:', error);
+        console.error('❌ Payment submission error:', error);
         res.status(500).json({
             success: false,
             message: 'Payment processing failed',
@@ -120,4 +163,4 @@ router.post('/submit', upload.single('proof'), async (req, res) => {
     }
 });
 
-module.exports = router; 
+module.exports = router;
