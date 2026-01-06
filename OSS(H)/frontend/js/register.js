@@ -44,15 +44,13 @@ function addMemberForm() {
         <div class="form-group">
             <label>Department *</label>
             <select name="memberDept${memberCount}" required>
-                <option value="">Select Department</option>
+               <option value="">Select Department</option>
                 <option value="CSE">CSE - Computer Science Engineering</option>
                 <option value="ECE">ECE - Electronics & Communication</option>
                 <option value="IT">IT - Information Technology</option>
                 <option value="MECH">MECH - Mechanical Engineering</option>
-                <option value="CIVIL">CIVIL - Civil Engineering</option>
-                <option value="ARC">ARC - Architecture</option>
                 <option value="EEE">EEE - Electrical & Electronics</option>
-                <option value="BIOM">BIOM - Biomedical Engineering</option>
+                <option value="others"> OTHERs </option>
             </select>
         </div>
         
@@ -250,4 +248,5 @@ function closeModal() {
 // Initialize with one member form
 window.addEventListener('load', () => {
     addMemberForm();
+
 });
