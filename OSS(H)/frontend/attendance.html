@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Scanner - OSS Hackathon</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
+        <div class="card" style="max-width: 400px; width: 90%;">
+            <h2 style="text-align: center; color: var(--bright-red); margin-bottom: 30px;">
+                Organizer Login
+            </h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter your username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter your password" required>
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button type="submit" class="btn">LOGIN</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scanner Screen -->
+    <div id="scannerScreen" style="display: none;">
+        <header>
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 20px;">
+                <div>
+                    <h1 class="logo" style="font-size: 2rem;">ATTENDANCE SCANNER</h1>
+                    <p class="subtitle">OSS Hackathon</p>
+                </div>
+                <button onclick="logout()" class="btn btn-secondary">LOGOUT</button>
+            </div>
+        </header>
+
+        <div class="container" style="max-width: 900px;">
+            <!-- Statistics -->
+            <div class="stats-grid"
+                style="margin-top: 30px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalTeams">0</div>
+                    <div class="stat-label">Total Teams</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="attendanceMarked">0</div>
+                    <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="attendancePending">0</div>
+                    <div class="stat-label">Pending</div>
+                </div>
+            </div>
+
+            <!-- QR Scanner -->
+            <div class="card" style="margin-top: 30px;">
+                <h2 style="text-align: center; color: var(--bright-red); margin-bottom: 20px;">
+                    Scan QR Code
+                </h2>
+
+                <!-- Scanner Container -->
+                <div id="qrReader" style="width: 100%; max-width: 500px; margin: 0 auto;"></div>
+
+                <div style="text-align: center; margin-top: 20px;">
+                    <button id="startScanBtn" onclick="startScanner()" class="btn">
+                        📷 START SCANNING
+                    </button>
+                    <button id="stopScanBtn" onclick="stopScanner()" class="btn btn-secondary" style="display: none;">
+                        ⏹️ STOP SCANNING
+                    </button>
+                </div>
+            </div>
+
+            <!-- Scan Result -->
+            <div id="scanResult" style="display: none;" class="card" style="margin-top: 30px;">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px; text-align: center;">
+                    Scanned Team Details
+                </h3>
+
+                <div id="teamDetails" style="background: var(--light-gray); padding: 25px; border-radius: 10px;">
+                    <!-- Will be filled dynamically -->
+                </div>
+
+                <div style="text-align: center; margin-top: 25px;">
+                    <button id="markAttendanceBtn" onclick="markAttendance()" class="btn"
+                        style="font-size: 1.3rem; padding: 15px 40px;">
+                        ✓ MARK ATTENDANCE
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recent Attendances -->
+            <div class="card" style="margin-top: 30px;">
+                <h3 style="color: var(--bright-red); margin-bottom: 20px;">
+                    Recent Check-ins
+                </h3>
+                <div id="recentList" style="max-height: 400px; overflow-y: auto;">
+                    <p style="text-align: center; color: #888;">No check-ins yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin;
+        let adminCredentials = null;
+        let html5QrCode = null;
+        let currentRegistrationId = null;
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_URL}/api/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    adminCredentials = { username, password };
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('scannerScreen').style.display = 'block';
+                    loadStats();
+                } else {
+                    alert('Invalid credentials');
+                }
+            } catch (error) {
+                alert('Login failed');
+            }
+        });
+
+        // Load statistics
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/api/attendance/stats`, {
+                    headers: {
+                        'username': adminCredentials.username,
+                        'password': adminCredentials.password
+                    }
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('totalTeams').textContent = result.data.totalTeams;
+                    document.getElementById('attendanceMarked').textContent = result.data.attendanceMarked;
+                    document.getElementById('attendancePending').textContent = result.data.attendancePending;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Start QR Scanner
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("qrReader");
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                onScanSuccess,
+                onScanError
+            ).then(() => {
+                document.getElementById('startScanBtn').style.display = 'none';
+                document.getElementById('stopScanBtn').style.display = 'inline-block';
+            }).catch(err => {
+                alert('Failed to start camera: ' + err);
+            });
+        }
+
+        // Stop Scanner
+        function stopScanner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('startScanBtn').style.display = 'inline-block';
+                    document.getElementById('stopScanBtn').style.display = 'none';
+                });
+            }
+        }
+
+        // On QR Scan Success
+        async function onScanSuccess(decodedText) {
+            stopScanner();
+
+            try {
+                const response = await fetch(`${API_URL}/api/attendance/verify-qr`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'username': adminCredentials.username,
+                        'password': adminCredentials.password
+                    },
+                    body: JSON.stringify({ qrData: decodedText })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    displayTeamDetails(result.data);
+                } else {
+                    alert('Invalid QR Code: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error verifying QR: ' + error.message);
+            }
+        }
+
+        function onScanError(err) {
+            // Ignore scan errors (happens continuously while scanning)
+        }
+
+        // Display Team Details
+        function displayTeamDetails(data) {
+            currentRegistrationId = data.registrationId;
+
+            const detailsHTML = `
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--bright-red);">Team Name:</strong><br>
+                    <span style="font-size: 1.5rem;">${data.teamName}</span>
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <strong>Team Leader:</strong> ${data.teamLeaderName}
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <strong>Team Members:</strong> ${data.memberCount}
+                </div>
+                <div style="margin-bottom: 15px;">
+                    <strong>Status:</strong> 
+                    <span style="color: ${data.attendanceMarked ? '#00ff00' : '#ff9900'}; font-weight: bold;">
+                        ${data.attendanceMarked ? 'ALREADY CHECKED IN' : 'NOT CHECKED IN'}
+                    </span>
+                </div>
+                ${data.attendanceMarked ? `
+                    <div style="margin-top: 15px; padding: 15px; background: rgba(0,255,0,0.1); border-radius: 8px;">
+                        <strong>Checked in at:</strong> ${new Date(data.markedAt).toLocaleString('en-IN')}<br>
+                        <strong>Marked by:</strong> ${data.markedBy}
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('teamDetails').innerHTML = detailsHTML;
+            document.getElementById('scanResult').style.display = 'block';
+
+            const markBtn = document.getElementById('markAttendanceBtn');
+            if (data.attendanceMarked) {
+                markBtn.style.display = 'none';
+            } else {
+                markBtn.style.display = 'inline-block';
+            }
+        }
+
+        // Mark Attendance
+        async function markAttendance() {
+            if (!currentRegistrationId) return;
+
+            const markedBy = prompt('Enter your name (organizer):');
+            if (!markedBy) return;
+
+            try {
+                const response = await fetch(`${API_URL}/api/attendance/mark-attendance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'username': adminCredentials.username,
+                        'password': adminCredentials.password
+                    },
+                    body: JSON.stringify({
+                        registrationId: currentRegistrationId,
+                        markedBy: markedBy
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('✅ Attendance marked successfully!');
+                    document.getElementById('scanResult').style.display = 'none';
+                    loadStats();
+                    currentRegistrationId = null;
+                } else {
+                    alert('Failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('Error marking attendance: ' + error.message);
+            }
+        }
+
+        function logout() {
+            stopScanner();
+            adminCredentials = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('scannerScreen').style.display = 'none';
+        }
+    </script>
+</body>
+
+</html>
