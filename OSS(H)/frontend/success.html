@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registration Successful - OSS Hackathon</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 </head>
-
 <body>
     <header>
         <div class="card-symbols">♠ ♥ ♦ ♣</div>
@@ -27,26 +26,22 @@
                 Congratulations! Your team has been successfully registered for the OSS Hackathon.
             </p>
 
-            <!-- Registration Details -->
-            <div
-                style="background: var(--light-gray); padding: 30px; border-radius: 10px; margin: 30px 0; text-align: left;">
+            <!-- Registration Summary -->
+            <div style="background: var(--light-gray); padding: 30px; border-radius: 10px; margin: 30px 0; text-align: left;">
                 <h3 style="color: var(--bright-red); margin-bottom: 20px; text-align: center;">
                     Registration Summary
                 </h3>
 
                 <div style="display: grid; gap: 15px;">
-                    <div
-                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
                         <span>Team Name:</span>
                         <strong id="summaryTeamName">-</strong>
                     </div>
-                    <div
-                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
                         <span>Team Size:</span>
                         <strong id="summaryTeamSize">-</strong>
                     </div>
-                    <div
-                        style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
+                    <div style="display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--dark-red);">
                         <span>Amount Paid:</span>
                         <strong style="color: #00ff00;" id="summaryAmount">-</strong>
                     </div>
@@ -57,24 +52,43 @@
                 </div>
             </div>
 
-            <!-- Important Information -->
-            <div class="card" style="background: var(--dark-red); padding: 25px; margin: 30px 0;">
-                <h3 style="margin-bottom: 15px;">📧 Receipt Sent!</h3>
-                <p style="font-size: 1.1rem; line-height: 1.8;">
-                    A confirmation email with your payment receipt has been sent to the team leader's email address.
-                    Please check your inbox (and spam folder).
+            <!-- QR Code Section -->
+            <div class="card" style="background: var(--dark-red); padding: 30px; margin: 30px 0;">
+                <h3 style="margin-bottom: 15px;">🎫 Your Event Pass</h3>
+                <p style="font-size: 1.1rem; line-height: 1.8; margin-bottom: 20px;">
+                    Show this QR code at the event entrance for attendance
                 </p>
+                
+                <!-- QR Code Display -->
+                <div style="background: white; padding: 20px; border-radius: 10px; display: inline-block; margin: 20px 0;">
+                    <div id="qrcode" style="display: inline-block;"></div>
+                </div>
+                
+                <div style="background: var(--light-gray); padding: 15px; border-radius: 10px; margin: 20px 0;">
+                    <p style="font-size: 0.9rem; margin-bottom: 10px;">Registration ID:</p>
+                    <p id="qrIdDisplay" style="font-size: 1.2rem; font-family: monospace; word-break: break-all; color: var(--bright-red);"></p>
+                </div>
+                
+                <p style="font-size: 0.9rem; color: #aaa; margin-top: 15px;">
+                    ⚠️ Save this page or take a screenshot!
+                </p>
+                
+                <div style="margin-top: 20px;">
+                    <button onclick="window.print()" class="btn" style="padding: 10px 25px;">
+                        🖨️ Print Pass
+                    </button>
+                </div>
             </div>
 
             <!-- Next Steps -->
             <div style="text-align: left; margin: 30px 0;">
                 <h3 style="color: var(--bright-red); margin-bottom: 20px;">Next Steps:</h3>
                 <ul style="font-size: 1.1rem; line-height: 2; padding-left: 20px;">
-                    <li>Check your email for the receipt and confirmation</li>
-                    <li>Save your transaction ID for future reference</li>
-                    <li>Join our WhatsApp group (link will be sent via email)</li>
-                    <li>Bring your college ID on the event day</li>
-                    <li>Report at the venue 30 minutes before start time</li>
+                    <li>Save or screenshot your QR code</li>
+                    <li>Check your email for confirmation</li>
+                    <li>Bring your college ID on event day</li>
+                    <li><strong>Show this QR code at the entrance</strong></li>
+                    <li>Report at venue 30 minutes before start time</li>
                 </ul>
             </div>
 
@@ -86,7 +100,6 @@
             <!-- Action Buttons -->
             <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-top: 40px;">
                 <a href="index.html" class="btn">BACK TO HOME</a>
-                <button onclick="window.print()" class="btn btn-secondary">PRINT SUMMARY</button>
             </div>
         </div>
 
@@ -109,12 +122,12 @@
     </footer>
 
     <script>
-        // Load and display registration summary
         window.addEventListener('load', () => {
             const teamName = localStorage.getItem('teamName');
             const teamSize = localStorage.getItem('teamSize');
             const amount = localStorage.getItem('amount');
             const transactionId = localStorage.getItem('transactionId');
+            const registrationId = localStorage.getItem('registrationId');
             const paymentStatus = localStorage.getItem('paymentStatus');
 
             if (!teamName || paymentStatus !== 'success') {
@@ -127,8 +140,22 @@
             document.getElementById('summaryTeamSize').textContent = teamSize + ' members';
             document.getElementById('summaryAmount').textContent = '₹' + amount;
             document.getElementById('summaryTxnId').textContent = transactionId;
+            
+            // Generate QR code
+            const qrData = JSON.stringify({
+                id: registrationId,
+                team: teamName,
+                timestamp: Date.now()
+            });
+            
+            document.getElementById('qrIdDisplay').textContent = registrationId;
+            
+            // Generate QR code image
+            const qr = qrcode(0, 'M');
+            qr.addData(qrData);
+            qr.make();
+            document.getElementById('qrcode').innerHTML = qr.createImgTag(6);
         });
     </script>
 </body>
-
 </html>
