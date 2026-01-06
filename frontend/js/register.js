@@ -1,6 +1,5 @@
 // Registration Form Logic
 
-// ✅ FIXED: Use window.location.origin for both local and deployed
 const API_URL = window.location.origin;
 let memberCount = 0;
 const MAX_MEMBERS = 4;
@@ -45,15 +44,13 @@ function addMemberForm() {
         <div class="form-group">
             <label>Department *</label>
             <select name="memberDept${memberCount}" required>
-                <option value="">Select Department</option>
+               <option value="">Select Department</option>
                 <option value="CSE">CSE - Computer Science Engineering</option>
                 <option value="ECE">ECE - Electronics & Communication</option>
                 <option value="IT">IT - Information Technology</option>
                 <option value="MECH">MECH - Mechanical Engineering</option>
-                <option value="CIVIL">CIVIL - Civil Engineering</option>
-                <option value="ARC">ARC - Architecture</option>
                 <option value="EEE">EEE - Electrical & Electronics</option>
-                <option value="BIOM">BIOM - Biomedical Engineering</option>
+                <option value="others"> OTHERs </option>
             </select>
         </div>
         
@@ -79,6 +76,7 @@ function addMemberForm() {
 
     document.getElementById('membersContainer').appendChild(memberDiv);
 
+    // Disable add button if max reached
     if (memberCount >= MAX_MEMBERS) {
         document.getElementById('addMemberBtn').disabled = true;
         document.getElementById('addMemberBtn').style.opacity = '0.5';
@@ -90,12 +88,14 @@ function removeMember(memberId) {
     document.getElementById(memberId).remove();
     memberCount--;
 
+    // Re-enable add button
     if (memberCount < MAX_MEMBERS) {
         document.getElementById('addMemberBtn').disabled = false;
         document.getElementById('addMemberBtn').style.opacity = '1';
         document.getElementById('addMemberBtn').style.cursor = 'pointer';
     }
 
+    // Renumber remaining members
     renumberMembers();
 }
 
@@ -118,15 +118,18 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         return;
     }
 
+    // Collect form data
     const teamName = document.getElementById('teamName').value.trim();
     const teamLeaderName = document.getElementById('teamLeaderName').value.trim();
     const teamLeaderEmail = document.getElementById('teamLeaderEmail').value.trim().toLowerCase();
 
+    // Validate email domain
     if (!teamLeaderEmail.endsWith('@klu.ac.in')) {
         showModal('Invalid Email', 'Team leader email must be from @klu.ac.in domain.', 'error');
         return;
     }
 
+    // Collect team members
     const teamMembers = [];
     for (let i = 1; i <= memberCount; i++) {
         const name = document.querySelector(`input[name="memberName${i}"]`)?.value.trim();
@@ -145,9 +148,16 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
             return;
         }
 
-        teamMembers.push({ name, registerNumber, department, year, email });
+        teamMembers.push({
+            name,
+            registerNumber,
+            department,
+            year,
+            email
+        });
     }
 
+    // Check for duplicate emails within team
     const emails = teamMembers.map(m => m.email);
     const uniqueEmails = new Set(emails);
     if (emails.length !== uniqueEmails.size) {
@@ -155,6 +165,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         return;
     }
 
+    // Check for duplicate register numbers within team
     const regNos = teamMembers.map(m => m.registerNumber);
     const uniqueRegNos = new Set(regNos);
     if (regNos.length !== uniqueRegNos.size) {
@@ -162,6 +173,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         return;
     }
 
+    // Prepare registration data
     const registrationData = {
         teamName,
         teamLeaderName,
@@ -169,12 +181,14 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         teamMembers
     };
 
+    // Show loading
     const submitBtn = document.getElementById('submitBtn');
     const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<div class="spinner"></div>';
 
     try {
+        // Submit to backend
         const response = await fetch(`${API_URL}/api/registration/register`, {
             method: 'POST',
             headers: {
@@ -186,6 +200,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
         const result = await response.json();
 
         if (response.ok && result.success) {
+            // Store registration ID and redirect to payment
             localStorage.setItem('registrationId', result.data.registrationId);
             localStorage.setItem('teamName', result.data.teamName);
             localStorage.setItem('teamSize', result.data.teamSize);
@@ -193,7 +208,11 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
 
             window.location.href = 'payment.html';
         } else {
-            showModal('Registration Failed', result.message || 'An error occurred during registration.', 'error');
+            if (response.status === 409) {
+                showModal('User Already Exists', result.message || 'One or more team members are already registered.', 'error');
+            } else {
+                showModal('Registration Failed', result.message || 'An error occurred during registration.', 'error');
+            }
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
         }
@@ -205,6 +224,7 @@ document.getElementById('registrationForm').addEventListener('submit', async (e)
     }
 });
 
+// Modal functions
 function showModal(title, message, type = 'info') {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalMessage').textContent = message;
@@ -225,6 +245,8 @@ function closeModal() {
     document.getElementById('messageModal').classList.remove('active');
 }
 
+// Initialize with one member form
 window.addEventListener('load', () => {
     addMemberForm();
+
 });
