@@ -48,7 +48,6 @@ const authenticate = (req, res, next) => {
 function extractRegistrationId(qrData) {
     if (!qrData) return null;
     
-    // Remove any whitespace
     qrData = qrData.trim();
     
     console.log('🔍 Raw QR Data (first 200 chars):', qrData.substring(0, 200));
@@ -64,7 +63,7 @@ function extractRegistrationId(qrData) {
         const url = new URL(qrData);
         console.log('🌐 Parsed as URL:', url.href);
         
-        // Check query parameters - try multiple common parameter names
+        // Check query parameters
         const paramNames = ['id', 'registrationId', 'regId', 'registration_id', 'teamId', 'team_id'];
         for (const param of paramNames) {
             const value = url.searchParams.get(param);
@@ -79,14 +78,12 @@ function extractRegistrationId(qrData) {
         console.log('📂 URL Path segments:', pathSegments);
         
         if (pathSegments.length > 0) {
-            // Try last segment first (most common)
             const lastSegment = pathSegments[pathSegments.length - 1];
             if (/^[a-zA-Z0-9-_]+$/.test(lastSegment) && lastSegment.length > 3) {
                 console.log('✅ Using last path segment as ID:', lastSegment);
                 return lastSegment;
             }
             
-            // Try second-to-last segment
             if (pathSegments.length > 1) {
                 const secondLast = pathSegments[pathSegments.length - 2];
                 if (/^\d+$/.test(secondLast)) {
@@ -119,7 +116,7 @@ function extractRegistrationId(qrData) {
         return kvMatch[1];
     }
     
-    // Case 5: Just extract any long number (as last resort)
+    // Case 5: Extract any long number
     const numberMatch = qrData.match(/\b(\d{10,})\b/);
     if (numberMatch) {
         console.log('⚠️ Using extracted long number as ID:', numberMatch[1]);
@@ -144,7 +141,6 @@ router.post('/verify-qr', authenticate, (req, res) => {
         
         console.log('\n========== QR VERIFICATION STARTED ==========');
         
-        // Extract registration ID from QR data
         const registrationId = extractRegistrationId(qrData);
         
         if (!registrationId) {
@@ -160,7 +156,6 @@ router.post('/verify-qr', authenticate, (req, res) => {
         const registrations = readRegistrations();
         console.log('📊 Total registrations in database:', registrations.length);
         
-        // Debug: Show first few registration IDs and their structure
         if (registrations.length > 0) {
             console.log('📝 Sample registration structure:', {
                 keys: Object.keys(registrations[0]),
@@ -171,13 +166,11 @@ router.post('/verify-qr', authenticate, (req, res) => {
             });
         }
         
-        // Try multiple comparison methods
         const registration = registrations.find(r => {
             const regId = r.registrationId || r.id;
             const regIdStr = String(regId);
             const searchIdStr = String(registrationId);
             
-            // Log each comparison for debugging
             const matches = regIdStr === searchIdStr || 
                            Number(regId) === Number(registrationId) ||
                            regId == registrationId;
@@ -190,7 +183,6 @@ router.post('/verify-qr', authenticate, (req, res) => {
         });
         
         if (!registration) {
-            // Enhanced debugging
             console.log('\n❌ Registration NOT FOUND');
             console.log('🔍 Searching for:', registrationId, '(Type:', typeof registrationId, ')');
             console.log('📋 Available IDs (first 10):');
@@ -198,17 +190,6 @@ router.post('/verify-qr', authenticate, (req, res) => {
                 const rid = r.registrationId || r.id;
                 console.log(`  ${idx + 1}. ${rid} (Type: ${typeof rid})`);
             });
-            
-            // Check for close matches
-            const closeMatches = registrations.filter(r => {
-                const rid = String(r.registrationId || r.id);
-                const searchId = String(registrationId);
-                return rid.includes(searchId) || searchId.includes(rid);
-            });
-            
-            if (closeMatches.length > 0) {
-                console.log('🔍 Found close matches:', closeMatches.map(r => r.registrationId || r.id));
-            }
             
             return res.status(404).json({
                 success: false,
@@ -218,7 +199,6 @@ router.post('/verify-qr', authenticate, (req, res) => {
         
         console.log('✅ Registration found:', registration.teamName);
         
-        // Check if payment completed
         if (registration.status !== 'completed') {
             console.log('⚠️ Payment not completed. Status:', registration.status);
             return res.status(400).json({
@@ -235,8 +215,8 @@ router.post('/verify-qr', authenticate, (req, res) => {
                 registrationId: registration.registrationId || registration.id,
                 teamName: registration.teamName,
                 teamLeaderName: registration.teamLeaderName,
-                teamMembers: registration.teamMembers,
-                memberCount: registration.teamMembers.length,
+                teamMembers: registration.teamMembers || [],
+                memberCount: (registration.teamMembers || []).length,
                 attendanceMarked: registration.attendance?.marked || false,
                 markedAt: registration.attendance?.markedAt,
                 markedBy: registration.attendance?.markedBy
@@ -280,7 +260,6 @@ router.post('/mark-attendance', authenticate, (req, res) => {
             });
         }
         
-        // Check if already marked
         if (registrations[regIndex].attendance?.marked) {
             return res.status(400).json({
                 success: false,
@@ -289,7 +268,6 @@ router.post('/mark-attendance', authenticate, (req, res) => {
             });
         }
         
-        // Mark attendance
         registrations[regIndex].attendance = {
             marked: true,
             markedAt: new Date().toISOString(),
@@ -334,7 +312,7 @@ router.get('/stats', authenticate, (req, res) => {
         const completed = registrations.filter(r => r.status === 'completed');
         
         const totalTeams = completed.length;
-        const totalParticipants = completed.reduce((sum, r) => sum + r.teamMembers.length, 0);
+        const totalParticipants = completed.reduce((sum, r) => sum + (r.teamMembers || []).length, 0);
         const attendanceMarked = completed.filter(r => r.attendance?.marked).length;
         const attendancePending = totalTeams - attendanceMarked;
         
@@ -369,7 +347,7 @@ router.get('/list', authenticate, (req, res) => {
             registrationId: r.registrationId || r.id,
             teamName: r.teamName,
             teamLeaderName: r.teamLeaderName,
-            memberCount: r.teamMembers.length,
+            memberCount: (r.teamMembers || []).length,
             attendanceMarked: r.attendance?.marked || false,
             markedAt: r.attendance?.markedAt,
             markedBy: r.attendance?.markedBy,
