@@ -38,16 +38,13 @@
     <div id="scannerScreen" style="display: none;">
         <header>
             <div
-    style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 20px;">
-    <div>
-        <h1 class="logo" style="font-size: 2rem;">ATTENDANCE SCANNER</h1>
-        <p class="subtitle">OSS Hackathon</p>
-    </div>
-    <div style="display: flex; gap: 10px;">
-        <button onclick="exportToCSV()" class="btn" style="background: linear-gradient(135deg, #27ae60, #229954);"> EXPORT CSV</button>
-        <button onclick="logout()" class="btn btn-secondary">LOGOUT</button>
-    </div>
-</div>
+                style="display: flex; justify-content: space-between; align-items: center; max-width: 1200px; margin: 0 auto; padding: 20px;">
+                <div>
+                    <h1 class="logo" style="font-size: 2rem;">ATTENDANCE SCANNER</h1>
+                    <p class="subtitle">OSS Hackathon</p>
+                </div>
+                <button onclick="logout()" class="btn btn-secondary">LOGOUT</button>
+            </div>
         </header>
 
         <div class="container" style="max-width: 900px;">
@@ -100,7 +97,7 @@
                 <div style="text-align: center; margin-top: 25px;">
                     <button id="markAttendanceBtn" onclick="markAttendance()" class="btn"
                         style="font-size: 1.3rem; padding: 15px 40px;">
-                         MARK ATTENDANCE
+                        ✓ MARK ATTENDANCE
                     </button>
                 </div>
             </div>
@@ -310,51 +307,8 @@
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('scannerScreen').style.display = 'none';
         }
-        // Export to CSV
-async function exportToCSV() {
-    if (!adminCredentials) {
-        alert('Please login first');
-        return;
-    }
-
-    try {
-        const response = await fetch(`${API_URL}/api/attendance/export-csv`, {
-            method: 'GET',
-            headers: {
-                'username': adminCredentials.username,
-                'password': adminCredentials.password
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to export CSV');
-        }
-
-        // Get the CSV content as blob
-        const blob = await response.blob();
-        
-        // Create download link
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        
-        // Cleanup
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        alert('✅ CSV exported successfully!');
-    } catch (error) {
-        console.error('Error exporting CSV:', error);
-        alert('Failed to export CSV: ' + error.message);
-    }
-}
     </script>
 </body>
 
 
 </html>
-
-
