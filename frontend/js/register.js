@@ -2,14 +2,14 @@
 
 const API_URL = window.location.origin;
 let memberCount = 0;
-const MAX_MEMBERS = 4;
+const MAX_MEMBERS = 5;
 
 // Add member form
 document.getElementById('addMemberBtn').addEventListener('click', addMemberForm);
 
 function addMemberForm() {
     if (memberCount >= MAX_MEMBERS) {
-        showModal('Maximum Members Reached', 'You can only add up to 4 team members.', 'error');
+        showModal('Maximum Members Reached', 'You can only add up to 5 team members.', 'error');
         return;
     }
 
@@ -62,7 +62,6 @@ function addMemberForm() {
                 <option value="II">II - Second Year</option>
                 <option value="III">III - Third Year</option>
                 <option value="IV">IV - Fourth Year</option>
-                <option value="V">V - Fifth Year</option>
             </select>
         </div>
         
