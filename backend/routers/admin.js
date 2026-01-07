@@ -1,264 +1,118 @@
-// Check if user is logged in
-let isLoggedIn = sessionStorage.getItem('adminLoggedIn') === 'true';
-let authHeaders = {
-    username: sessionStorage.getItem('adminUsername'),
-    password: sessionStorage.getItem('adminPassword')
+const express = require('express');
+const router = express.Router();
+const Database = require('../models/database');
+const { Parser } = require('json2csv');
+
+// Simple authentication middleware
+const authenticate = (req, res, next) => {
+    const { username, password } = req.headers;
+
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+        next();
+    } else {
+        res.status(401).json({
+            success: false,
+            message: 'Unauthorized'
+        });
+    }
 };
 
-// Show appropriate screen on load
-if (isLoggedIn) {
-    showDashboard();
-    loadDashboardData();
-} else {
-    showLogin();
-}
+// Login endpoint
+router.post('/login', (req, res) => {
+    const { username, password } = req.body;
 
-// Login form handler
-document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-    
-    try {
-        const response = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ username, password })
+    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+        res.json({
+            success: true,
+            message: 'Login successful'
         });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            // Store credentials
-            sessionStorage.setItem('adminLoggedIn', 'true');
-            sessionStorage.setItem('adminUsername', username);
-            sessionStorage.setItem('adminPassword', password);
-            
-            authHeaders = { username, password };
-            
-            showDashboard();
-            loadDashboardData();
-        } else {
-            showMessage('Login Failed', data.message || 'Invalid credentials', 'error');
-        }
-    } catch (error) {
-        console.error('Login error:', error);
-        showMessage('Error', 'Failed to connect to server', 'error');
+    } else {
+        res.status(401).json({
+            success: false,
+            message: 'Invalid credentials'
+        });
     }
 });
 
-function showLogin() {
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('dashboardScreen').style.display = 'none';
-}
-
-function showDashboard() {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dashboardScreen').style.display = 'block';
-}
-
-function logout() {
-    sessionStorage.clear();
-    authHeaders = {};
-    isLoggedIn = false;
-    showLogin();
-    document.getElementById('loginForm').reset();
-}
-
-async function loadDashboardData() {
+// Get all registrations
+router.get('/registrations', authenticate, (req, res) => {
     try {
-        // Load statistics
-        await loadStats();
-        
-        // Load registrations
-        await loadRegistrations();
-        
-    } catch (error) {
-        console.error('Error loading dashboard:', error);
-        showMessage('Error', 'Failed to load dashboard data', 'error');
-    }
-}
-
-async function loadStats() {
-    try {
-        const response = await fetch('/api/admin/stats', {
-            headers: authHeaders
+        const registrations = Database.getAll();
+        res.json({
+            success: true,
+            data: registrations
         });
-        
-        if (response.status === 401) {
-            logout();
-            return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            const stats = data.data;
-            document.getElementById('totalTeams').textContent = stats.totalTeams || 0;
-            document.getElementById('totalParticipants').textContent = stats.totalParticipants || 0;
-            document.getElementById('totalRevenue').textContent = `₹${stats.totalRevenue || 0}`;
-            document.getElementById('pendingTeams').textContent = stats.pendingTeams || 0;
-        }
     } catch (error) {
-        console.error('Error loading stats:', error);
-    }
-}
-
-async function loadRegistrations() {
-    const tbody = document.getElementById('registrationsBody');
-    
-    try {
-        const response = await fetch('/api/admin/registrations', {
-            headers: authHeaders
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching registrations',
+            error: error.message
         });
-        
-        if (response.status === 401) {
-            logout();
-            return;
-        }
-        
-        const data = await response.json();
-        
-        if (data.success && data.data) {
-            const registrations = data.data;
-            
-            if (registrations.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 40px; color: #999;">
-                            No registrations yet
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            tbody.innerHTML = registrations.map(reg => {
-                const memberCount = reg.teamMembers ? reg.teamMembers.length : 0;
-                const amount = reg.payment?.amount || 'Pending';
-                const status = reg.status || 'pending';
-                const date = new Date(reg.timestamp).toLocaleDateString('en-IN', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+    }
+});
+
+// Get statistics
+router.get('/stats', authenticate, (req, res) => {
+    try {
+        const stats = Database.getStats();
+        res.json({
+            success: true,
+            data: stats
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching statistics',
+            error: error.message
+        });
+    }
+});
+
+// Export registrations as CSV
+router.get('/export', authenticate, (req, res) => {
+    try {
+        const registrations = Database.getAll();
+
+        // Flatten data for CSV
+        const flatData = [];
+        registrations.forEach(reg => {
+            reg.teamMembers.forEach((member, index) => {
+                flatData.push({
+                    'Team Name': reg.teamName,
+                    'Team Leader': reg.teamLeaderName,
+                    'Team Leader Email': reg.teamLeaderEmail,
+                    'Member Position': index === 0 ? 'Leader' : `Member ${index}`,
+                    'Member Name': member.name,
+                    'Register Number': member.registerNumber,
+                    'Department': member.department,
+                    'Year': member.year,
+                    'Email': member.email,
+                    'Team Size': reg.teamMembers.length,
+                    'Amount Paid': reg.payment ? reg.payment.amount : 'Pending',
+                    'Transaction ID': reg.payment ? reg.payment.transactionId : 'N/A',
+                    'Status': reg.status,
+                    'Registration Date': new Date(reg.timestamp).toLocaleString('en-IN')
                 });
-                
-                const statusClass = status === 'confirmed' ? 'status-confirmed' : 
-                                  status === 'pending' ? 'status-pending' : 'status-rejected';
-                
-                return `
-                    <tr>
-                        <td><strong>${escapeHtml(reg.teamName)}</strong></td>
-                        <td>${escapeHtml(reg.teamLeaderName)}</td>
-                        <td>${escapeHtml(reg.teamLeaderEmail)}</td>
-                        <td>${memberCount} members</td>
-                        <td>₹${amount}</td>
-                        <td><span class="status ${statusClass}">${status.toUpperCase()}</span></td>
-                        <td>${date}</td>
-                    </tr>
-                `;
-            }).join('');
-        } else {
-            throw new Error('Invalid response from server');
-        }
-    } catch (error) {
-        console.error('Error loading registrations:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="7" style="text-align: center; padding: 40px; color: var(--bright-red);">
-                    Failed to load registrations. Please try again.
-                </td>
-            </tr>
-        `;
-    }
-}
-
-async function refreshData() {
-    const btn = event.target;
-    btn.disabled = true;
-    btn.textContent = '🔄 REFRESHING...';
-    
-    try {
-        await loadDashboardData();
-        showMessage('Success', 'Data refreshed successfully', 'success');
-    } catch (error) {
-        showMessage('Error', 'Failed to refresh data', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.textContent = '🔄 REFRESH DATA';
-    }
-}
-
-async function exportCSV() {
-    try {
-        const response = await fetch('/api/admin/export', {
-            headers: authHeaders
+            });
         });
-        
-        if (response.status === 401) {
-            logout();
-            return;
-        }
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `oss_hackathon_registrations_${Date.now()}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-            
-            showMessage('Success', 'CSV exported successfully', 'success');
-        } else {
-            throw new Error('Export failed');
-        }
+
+        // Convert to CSV
+        const parser = new Parser();
+        const csv = parser.parse(flatData);
+
+        // Set headers for download
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename=oss_hackathon_registrations_${Date.now()}.csv`);
+        res.send(csv);
+
     } catch (error) {
         console.error('Export error:', error);
-        showMessage('Error', 'Failed to export CSV', 'error');
+        res.status(500).json({
+            success: false,
+            message: 'Error exporting data',
+            error: error.message
+        });
     }
-}
+});
 
-function showMessage(title, message, type) {
-    const modal = document.getElementById('messageModal');
-    const modalTitle = document.getElementById('modalTitle');
-    const modalMessage = document.getElementById('modalMessage');
-    const modalIcon = document.getElementById('modalIcon');
-    
-    modalTitle.textContent = title;
-    modalMessage.textContent = message;
-    
-    if (type === 'success') {
-        modalIcon.innerHTML = '<div style="font-size: 4rem; color: #4CAF50;">✓</div>';
-    } else if (type === 'error') {
-        modalIcon.innerHTML = '<div style="font-size: 4rem; color: var(--bright-red);">✗</div>';
-    } else {
-        modalIcon.innerHTML = '<div style="font-size: 4rem; color: var(--gold);">!</div>';
-    }
-    
-    modal.style.display = 'flex';
-}
-
-function closeModal() {
-    document.getElementById('messageModal').style.display = 'none';
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Auto-refresh every 30 seconds when dashboard is visible
-setInterval(() => {
-    if (isLoggedIn && document.getElementById('dashboardScreen').style.display !== 'none') {
-        loadStats();
-    }
-}, 30000);
+module.exports = router;
