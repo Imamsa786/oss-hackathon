@@ -456,7 +456,43 @@
         overflow: hidden;
     }
 }
-        
+        /* Fix mobile menu overlay issue */
+@media (max-width: 768px) {
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        position: relative;
+    }
+    
+    .navbar {
+        width: 100% !important;
+        position: fixed !important;
+    }
+    
+    .navbar-container {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    
+    .navbar-menu {
+        position: fixed !important;
+        top: 65px !important;
+        right: -250px !important;
+        width: 250px !important;
+        height: calc(100vh - 65px) !important;
+        z-index: 9999 !important;
+        transition: right 0.3s ease !important;
+    }
+    
+    .navbar-menu.active {
+        right: 0 !important;
+    }
+    
+    /* Keep content in place */
+    header, .container, .bg-animation, .string-strips {
+        transition: none !important;
+    }
+}
     </style>
 </head>
 
@@ -684,20 +720,26 @@
             }
         }
 
-        // Mobile menu toggle
+// Mobile menu toggle
 const menuToggle = document.getElementById('menuToggle');
 const navbarMenu = document.getElementById('navbarMenu');
 
-menuToggle.addEventListener('click', () => {
+menuToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
     navbarMenu.classList.toggle('active');
-    document.body.classList.toggle('menu-open'); // Prevent background scroll
+});
+
+// Close menu when clicking outside
+document.addEventListener('click', (e) => {
+    if (!navbarMenu.contains(e.target) && !menuToggle.contains(e.target)) {
+        navbarMenu.classList.remove('active');
+    }
 });
 
 // Close menu when clicking a link
 document.querySelectorAll('.navbar-menu a').forEach(link => {
     link.addEventListener('click', () => {
         navbarMenu.classList.remove('active');
-        document.body.classList.remove('menu-open');
     });
 });
 
