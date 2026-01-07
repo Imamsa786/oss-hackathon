@@ -1,118 +1,195 @@
-const express = require('express');
-const router = express.Router();
-const Database = require('../models/database');
-const { Parser } = require('json2csv');
+const fs = require('fs');
+const path = require('path');
 
-// Simple authentication middleware
-const authenticate = (req, res, next) => {
-    const { username, password } = req.headers;
-
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        next();
-    } else {
-        res.status(401).json({
-            success: false,
-            message: 'Unauthorized'
-        });
+class Database {
+    constructor() {
+        // Path to store data persistently
+        this.dataDir = path.join(__dirname, '..', 'data');
+        this.dataFile = path.join(this.dataDir, 'registrations.json');
+        
+        // Ensure data directory exists
+        this.ensureDataDirectory();
+        
+        // Load existing data or initialize empty array
+        this.registrations = this.loadData();
     }
-};
 
-// Login endpoint
-router.post('/login', (req, res) => {
-    const { username, password } = req.body;
-
-    if (username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
-        res.json({
-            success: true,
-            message: 'Login successful'
-        });
-    } else {
-        res.status(401).json({
-            success: false,
-            message: 'Invalid credentials'
-        });
+    ensureDataDirectory() {
+        if (!fs.existsSync(this.dataDir)) {
+            fs.mkdirSync(this.dataDir, { recursive: true });
+        }
     }
-});
 
-// Get all registrations
-router.get('/registrations', authenticate, (req, res) => {
-    try {
-        const registrations = Database.getAll();
-        res.json({
-            success: true,
-            data: registrations
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching registrations',
-            error: error.message
-        });
+    loadData() {
+        try {
+            if (fs.existsSync(this.dataFile)) {
+                const data = fs.readFileSync(this.dataFile, 'utf8');
+                return JSON.parse(data);
+            }
+        } catch (error) {
+            console.error('Error loading data:', error);
+        }
+        return [];
     }
-});
 
-// Get statistics
-router.get('/stats', authenticate, (req, res) => {
-    try {
-        const stats = Database.getStats();
-        res.json({
-            success: true,
-            data: stats
-        });
-    } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching statistics',
-            error: error.message
-        });
+    saveData() {
+        try {
+            fs.writeFileSync(
+                this.dataFile, 
+                JSON.stringify(this.registrations, null, 2),
+                'utf8'
+            );
+            return true;
+        } catch (error) {
+            console.error('Error saving data:', error);
+            return false;
+        }
     }
-});
 
-// Export registrations as CSV
-router.get('/export', authenticate, (req, res) => {
-    try {
-        const registrations = Database.getAll();
-
-        // Flatten data for CSV
-        const flatData = [];
-        registrations.forEach(reg => {
-            reg.teamMembers.forEach((member, index) => {
-                flatData.push({
-                    'Team Name': reg.teamName,
-                    'Team Leader': reg.teamLeaderName,
-                    'Team Leader Email': reg.teamLeaderEmail,
-                    'Member Position': index === 0 ? 'Leader' : `Member ${index}`,
-                    'Member Name': member.name,
-                    'Register Number': member.registerNumber,
-                    'Department': member.department,
-                    'Year': member.year,
-                    'Email': member.email,
-                    'Team Size': reg.teamMembers.length,
-                    'Amount Paid': reg.payment ? reg.payment.amount : 'Pending',
-                    'Transaction ID': reg.payment ? reg.payment.transactionId : 'N/A',
-                    'Status': reg.status,
-                    'Registration Date': new Date(reg.timestamp).toLocaleString('en-IN')
-                });
-            });
-        });
-
-        // Convert to CSV
-        const parser = new Parser();
-        const csv = parser.parse(flatData);
-
-        // Set headers for download
-        res.setHeader('Content-Type', 'text/csv');
-        res.setHeader('Content-Disposition', `attachment; filename=oss_hackathon_registrations_${Date.now()}.csv`);
-        res.send(csv);
-
-    } catch (error) {
-        console.error('Export error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error exporting data',
-            error: error.message
-        });
+    add(registration) {
+        try {
+            const newRegistration = {
+                ...registration,
+                id: Date.now().toString(),
+                timestamp: new Date().toISOString(),
+                status: registration.status || 'pending'
+            };
+            
+            this.registrations.push(newRegistration);
+            this.saveData();
+            
+            return {
+                success: true,
+                data: newRegistration
+            };
+        } catch (error) {
+            console.error('Error adding registration:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
     }
-});
 
-module.exports = router;
+    getAll() {
+        return this.registrations;
+    }
+
+    getById(id) {
+        return this.registrations.find(reg => reg.id === id);
+    }
+
+    getByEmail(email) {
+        return this.registrations.find(
+            reg => reg.teamLeaderEmail.toLowerCase() === email.toLowerCase()
+        );
+    }
+
+    updateStatus(id, status) {
+        try {
+            const index = this.registrations.findIndex(reg => reg.id === id);
+            if (index !== -1) {
+                this.registrations[index].status = status;
+                this.registrations[index].updatedAt = new Date().toISOString();
+                this.saveData();
+                return {
+                    success: true,
+                    data: this.registrations[index]
+                };
+            }
+            return {
+                success: false,
+                error: 'Registration not found'
+            };
+        } catch (error) {
+            console.error('Error updating status:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    delete(id) {
+        try {
+            const index = this.registrations.findIndex(reg => reg.id === id);
+            if (index !== -1) {
+                const deleted = this.registrations.splice(index, 1);
+                this.saveData();
+                return {
+                    success: true,
+                    data: deleted[0]
+                };
+            }
+            return {
+                success: false,
+                error: 'Registration not found'
+            };
+        } catch (error) {
+            console.error('Error deleting registration:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+
+    getStats() {
+        const totalTeams = this.registrations.length;
+        
+        const totalParticipants = this.registrations.reduce((sum, reg) => {
+            return sum + (reg.teamMembers ? reg.teamMembers.length : 0);
+        }, 0);
+        
+        const totalRevenue = this.registrations.reduce((sum, reg) => {
+            if (reg.payment && reg.payment.amount) {
+                return sum + parseFloat(reg.payment.amount);
+            }
+            return sum;
+        }, 0);
+        
+        const pendingTeams = this.registrations.filter(
+            reg => reg.status === 'pending'
+        ).length;
+        
+        const confirmedTeams = this.registrations.filter(
+            reg => reg.status === 'confirmed'
+        ).length;
+
+        return {
+            totalTeams,
+            totalParticipants,
+            totalRevenue,
+            pendingTeams,
+            confirmedTeams
+        };
+    }
+
+    // Backup function - creates a backup of current data
+    createBackup() {
+        try {
+            const backupFile = path.join(
+                this.dataDir, 
+                `backup_${Date.now()}.json`
+            );
+            fs.writeFileSync(
+                backupFile,
+                JSON.stringify(this.registrations, null, 2),
+                'utf8'
+            );
+            return {
+                success: true,
+                file: backupFile
+            };
+        } catch (error) {
+            console.error('Error creating backup:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    }
+}
+
+// Export singleton instance
+module.exports = new Database();
