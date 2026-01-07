@@ -90,6 +90,15 @@ try {
     console.error('❌ Failed to load admin route:', error.message);
 }
 
+// ===== NEW: ADD ATTENDANCE ROUTE =====
+try {
+    const attendanceRoute = require('./backend/routers/attendance');
+    app.use('/api/attendance', attendanceRoute);
+    console.log('✅ Loaded: attendance route');
+} catch (error) {
+    console.error('❌ Failed to load attendance route:', error.message);
+}
+
 // Catch-all for frontend routes
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'frontend', 'index.html'));
@@ -115,6 +124,7 @@ app.listen(PORT, () => {
     console.log(`📝 Register: http://localhost:${PORT}/register.html`);
     console.log(`💳 Payment: http://localhost:${PORT}/payment.html`);
     console.log(`🔐 Admin: http://localhost:${PORT}/admin.html`);
+    console.log(`📋 Attendance: http://localhost:${PORT}/attendance.html`);
     console.log(`🏥 Health: http://localhost:${PORT}/api/health`);
     console.log('════════════════════════════════════════\n');
     console.log('👀 Watching for requests...\n');
