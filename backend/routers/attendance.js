@@ -368,5 +368,50 @@ router.get('/list', authenticate, (req, res) => {
         });
     }
 });
+// Export attendance to CSV
+router.get('/export-csv', authenticate, (req, res) => {
+    try {
+        const registrations = readRegistrations();
+        const completed = registrations.filter(r => r.status === 'completed');
+        
+        // CSV Headers
+        let csv = 'Registration ID,Team Name,Team Leader,Team Leader Email,Team Leader Phone,Member Count,Attendance Status,Marked At,Marked By,Registered At\n';
+        
+        // CSV Rows
+        completed.forEach(r => {
+            const regId = r.registrationId || r.id || '';
+            const teamName = (r.teamName || '').replace(/,/g, ';').replace(/"/g, '""');
+            const leaderName = (r.teamLeaderName || '').replace(/,/g, ';').replace(/"/g, '""');
+            const leaderEmail = (r.teamLeaderEmail || '').replace(/,/g, ';').replace(/"/g, '""');
+            const leaderPhone = (r.teamLeaderPhone || '').replace(/,/g, ';').replace(/"/g, '""');
+            const memberCount = (r.teamMembers || []).length;
+            const status = r.attendance?.marked ? 'Present' : 'Absent';
+            const markedAt = r.attendance?.markedAt ? new Date(r.attendance.markedAt).toLocaleString('en-IN') : 'N/A';
+            const markedBy = (r.attendance?.markedBy || 'N/A').replace(/,/g, ';').replace(/"/g, '""');
+            const registeredAt = r.timestamp ? new Date(r.timestamp).toLocaleString('en-IN') : 'N/A';
+            
+            csv += `"${regId}","${teamName}","${leaderName}","${leaderEmail}","${leaderPhone}",${memberCount},"${status}","${markedAt}","${markedBy}","${registeredAt}"\n`;
+        });
+        
+        // Set headers for file download
+        const filename = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        
+        console.log('✅ CSV exported with', completed.length, 'records');
+        
+        res.send('\ufeff' + csv); // Add BOM for Excel compatibility
+        
+    } catch (error) {
+        console.error('Error exporting CSV:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error exporting CSV',
+            error: error.message
+        });
+    }
+});
+
 
 module.exports = router;
+
