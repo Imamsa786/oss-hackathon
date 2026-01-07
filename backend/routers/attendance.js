@@ -369,4 +369,29 @@ router.get('/list', authenticate, (req, res) => {
     }
 });
 
+// Debug endpoint - Check all registration IDs
+router.get('/debug-ids', authenticate, (req, res) => {
+    try {
+        const registrations = readRegistrations();
+        const allIds = registrations.map(r => ({
+            id: r.id,
+            registrationId: r.registrationId,
+            teamName: r.teamName,
+            status: r.status,
+            idType: typeof (r.registrationId || r.id)
+        }));
+        
+        res.json({
+            success: true,
+            total: registrations.length,
+            ids: allIds
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: error.message
+        });
+    }
+});
 module.exports = router;
+
