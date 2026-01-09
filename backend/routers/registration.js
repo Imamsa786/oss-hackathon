@@ -5,9 +5,19 @@ const path = require('path');
 
 const DATA_FILE = path.join(__dirname, '../data/registrations.json');
 
+// Ensure data directory exists
+function ensureDataDirectory() {
+    const dataDir = path.join(__dirname, '../data');
+    if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+        console.log('📁 Created data directory');
+    }
+}
+
 // Helper function to read registrations
 function readRegistrations() {
     try {
+        ensureDataDirectory();
         if (fs.existsSync(DATA_FILE)) {
             const fileContent = fs.readFileSync(DATA_FILE, 'utf8');
             const data = JSON.parse(fileContent);
@@ -24,6 +34,7 @@ function readRegistrations() {
 // Helper function to write registrations
 function writeRegistrations(registrations) {
     try {
+        ensureDataDirectory();
         const data = { registrations: Array.isArray(registrations) ? registrations : [] };
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
         return true;
@@ -58,8 +69,8 @@ router.post('/register', (req, res) => {
             });
         }
 
-        // Validate max team size
-        if (teamMembers.length > 5) {
+        // Validate max team size (changed from 5 to 4 to match error message)
+        if (teamMembers.length > 4) {
             console.log('❌ Team too large');
             return res.status(400).json({
                 success: false,
@@ -73,6 +84,16 @@ router.post('/register', (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Email must be from @klu.ac.in domain'
+            });
+        }
+
+        // Validate all team member emails
+        const invalidEmails = teamMembers.filter(m => !m.email.endsWith('@klu.ac.in'));
+        if (invalidEmails.length > 0) {
+            console.log('❌ Invalid team member email domains');
+            return res.status(400).json({
+                success: false,
+                message: 'All team member emails must be from @klu.ac.in domain'
             });
         }
 
@@ -91,30 +112,49 @@ router.post('/register', (req, res) => {
         let registrations = readRegistrations();
         console.log(`📊 Current registrations: ${registrations.length}`);
 
-        // Check for duplicate registrations
-        const isDuplicate = registrations.some(reg => {
-            // Check team leader email
-            if (reg.teamLeaderEmail === teamLeaderEmail) {
-                return true;
-            }
-            // Check team member emails
-            if (reg.teamMembers && Array.isArray(reg.teamMembers)) {
-                return reg.teamMembers.some(member => 
-                    teamMembers.some(newMember => 
-                        member.email === newMember.email || 
-                        member.registerNumber === newMember.registerNumber
-                    )
-                );
+        // Check for duplicate registrations with COMPLETED payment only
+        const isDuplicateCompleted = registrations.some(reg => {
+            // Only check completed registrations
+            if (reg.status === 'completed' || reg.paymentStatus === 'COMPLETED') {
+                // Check team leader email
+                if (reg.teamLeaderEmail === teamLeaderEmail) {
+                    return true;
+                }
+                // Check team member emails and register numbers
+                if (reg.teamMembers && Array.isArray(reg.teamMembers)) {
+                    return reg.teamMembers.some(member => 
+                        teamMembers.some(newMember => 
+                            member.email === newMember.email || 
+                            member.registerNumber === newMember.registerNumber
+                        )
+                    );
+                }
             }
             return false;
         });
 
-        if (isDuplicate) {
-            console.log('❌ Duplicate registration detected');
+        if (isDuplicateCompleted) {
+            console.log('❌ Duplicate registration detected (payment completed)');
             return res.status(409).json({
                 success: false,
-                message: 'One or more team members are already registered'
+                message: 'One or more team members have already completed registration and payment'
             });
+        }
+
+        // Check if user has pending registration and remove it
+        const hasPending = registrations.some(reg => {
+            return (reg.status === 'pending' || reg.paymentStatus === 'PENDING') && 
+                   reg.teamLeaderEmail === teamLeaderEmail;
+        });
+
+        if (hasPending) {
+            // Remove old pending registration(s)
+            const beforeCount = registrations.length;
+            registrations = registrations.filter(reg => 
+                !((reg.status === 'pending' || reg.paymentStatus === 'PENDING') && 
+                  reg.teamLeaderEmail === teamLeaderEmail)
+            );
+            console.log(`🔄 Removed ${beforeCount - registrations.length} old pending registration(s), allowing new registration`);
         }
 
         // Create registration
@@ -173,12 +213,15 @@ router.post('/check-duplicate', (req, res) => {
         const { email, registerNumber } = req.body;
         const registrations = readRegistrations();
         
+        // Only check completed registrations
         const exists = registrations.some(reg => {
-            if (reg.teamLeaderEmail === email) return true;
-            if (reg.teamMembers && Array.isArray(reg.teamMembers)) {
-                return reg.teamMembers.some(m => 
-                    m.email === email || m.registerNumber === registerNumber
-                );
+            if (reg.status === 'completed' || reg.paymentStatus === 'COMPLETED') {
+                if (reg.teamLeaderEmail === email) return true;
+                if (reg.teamMembers && Array.isArray(reg.teamMembers)) {
+                    return reg.teamMembers.some(m => 
+                        m.email === email || m.registerNumber === registerNumber
+                    );
+                }
             }
             return false;
         });
@@ -186,7 +229,7 @@ router.post('/check-duplicate', (req, res) => {
         res.json({
             success: true,
             exists,
-            message: exists ? 'User already exists' : 'User not found'
+            message: exists ? 'User already registered with completed payment' : 'User can register'
         });
     } catch (error) {
         console.error('Error checking duplicate:', error);
