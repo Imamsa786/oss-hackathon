@@ -59,7 +59,7 @@ router.post('/register', (req, res) => {
         }
 
         // Validate max team size
-        if (teamMembers.length > 4) {
+        if (teamMembers.length > 5) {
             console.log('❌ Team too large');
             return res.status(400).json({
                 success: false,
